@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Discord Checker</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="icons/discord.svg" alt="Discord" width="28" height="28" />
+        <div>
+          <strong>Discord Checker</strong
+          ><span>Your channels. Less noise.</span>
+        </div>
+      </div>
+      <button
+        id="settings-button"
+        class="icon-button"
+        aria-label="Settings"
+        title="Settings"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="m9.5 4 .7-2h3.6l.7 2 2 .9 2.1-.4 1.8 3.1-1.4 1.6.2 2.2 1.4 1.6-1.8 3.1-2.1-.4-2 .9-.7 2h-3.6l-.7-2-2-.9-2.1.4-1.8-3.1 1.4-1.6-.2-2.2-1.4-1.6 1.8-3.1 2.1.4Z"
+          />
+          <circle cx="12" cy="10.5" r="3" />
+        </svg>
+      </button>
+    </header>
+    <div id="error" class="error" role="alert" hidden></div>
+    <main>
+      <section id="welcome" hidden>
+        <div class="welcome-art" aria-hidden="true">
+          <span class="floating-hash">#</span
+          ><img src="icons/discord.svg" alt="" /><span class="floating-badge"
+            >3</span
+          >
+        </div>
+        <span class="eyebrow">A LITTLE LESS CHECKING</span>
+        <h1>Keep up with the<br />channels you care about.</h1>
+        <p>
+          Pick your servers and channels. Get a quiet little badge when there’s
+          something new.
+        </p>
+        <button id="connect" class="primary">
+          Open Discord &amp; sign in <span aria-hidden="true">↗</span>
+        </button>
+        <ol class="steps">
+          <li><span>1</span>Sign in on Discord’s own website.</li>
+          <li><span>2</span>Visit a server to discover its channels.</li>
+          <li><span>3</span>Come back here and choose what to follow.</li>
+        </ol>
+        <div class="privacy">
+          No password or account token is stored. Keep a Discord web tab open to
+          receive updates.
+        </div>
+      </section>
+
+      <section id="dashboard" hidden>
+        <div class="connection-row">
+          <span id="connection" class="connection"
+            ><i></i>Connected to Discord</span
+          ><button id="refresh" class="text-button">↻ Refresh</button>
+        </div>
+        <div id="offline-note" class="notice" hidden></div>
+        <div class="summary">
+          <div>
+            <span class="eyebrow">YOUR ACTIVITY</span>
+            <div class="summary-number" id="total">0</div>
+            <p id="total-caption">All quiet for now.</p>
+          </div>
+          <div class="summary-art" aria-hidden="true">
+            <span>#</span><span class="summary-dot"></span>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Popup views">
+          <button id="activity-tab" class="tab active" aria-selected="true">
+            Activity <span id="activity-count">0</span></button
+          ><button id="following-tab" class="tab" aria-selected="false">
+            Following
+          </button>
+        </nav>
+        <section id="activity-panel">
+          <div class="section-title">
+            <span>WATCHED CHANNELS</span
+            ><button
+              id="clear"
+              class="text-button"
+              title="Clear extension counts locally. This does not mark messages as read in Discord."
+            >
+              Clear counts
+            </button>
+          </div>
+          <div id="activity-list"></div>
+        </section>
+        <section id="following-panel" hidden>
+          <label class="search"
+            ><span aria-hidden="true">⌕</span
+            ><input
+              id="search"
+              type="search"
+              placeholder="Find a server or channel"
+              aria-label="Find a server or channel"
+          /></label>
+          <p class="helper">
+            Choose a whole server or just a few channels. Visit a server in
+            Discord to load its channel list.
+          </p>
+          <div id="server-list"></div>
+        </section>
+        <p class="count-note">
+          “+” means at least that many. A dot means unread activity with no
+          available count. Specific-channel checks require a visible channel
+          list.
+        </p>
+      </section>
+
+      <section id="settings-panel" hidden>
+        <button id="back" class="text-button">← Back</button>
+        <h1 class="settings-title">Make it yours.</h1>
+        <p class="helper">A few small controls for your checker.</p>
+        <label class="setting"
+          ><div>
+            <strong>Desktop notifications</strong>
+            <p>Get a notification for new watched activity.</p>
+          </div>
+          <input id="notifications" type="checkbox" role="switch"
+        /></label>
+        <label class="setting"
+          ><div>
+            <strong>Pause the checker</strong>
+            <p>Keep your selections, quiet the notifications.</p>
+          </div>
+          <input id="paused" type="checkbox" role="switch"
+        /></label>
+        <div class="settings-info">
+          <strong>How counting works</strong>
+          <p>
+            Discord’s sidebar gives unread indicators and mention counts. Newly
+            rendered messages are counted once after a baseline scan. Counts can
+            be lower than the true total, and old or off-screen messages cannot
+            be counted.
+          </p>
+          <p>
+            Opening a channel and reading at the bottom clears its observed
+            count. “Clear counts” only clears this extension’s view until a new
+            unread signal or observed message arrives.
+          </p>
+          <strong>Your privacy</strong>
+          <p>
+            Selections, channel names, message IDs, and counts stay in this
+            browser. The extension never stores message contents, your password,
+            or a Discord account token.
+          </p>
+          <p>
+            Use one Discord account at a time. If an account change cannot be
+            identified from the page, use “Forget local data” before connecting
+            the other account.
+          </p>
+        </div>
+        <button id="reset" class="danger">Forget local data</button>
+        <div id="reset-confirm" class="notice" hidden>
+          <p>This removes your selections and counts from this browser.</p>
+          <div class="confirm-actions">
+            <button id="reset-cancel" class="text-button">Cancel</button
+            ><button id="reset-yes" class="danger">Forget everything</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span><i class="footer-dot"></i> Only what matters.</span
+      ><button id="open-discord" class="text-button">Open Discord ↗</button>
+    </footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

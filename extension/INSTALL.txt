@@ -1,0 +1,30 @@
+DISCORD CHECKER - CHROME / EDGE
+
+1. Extract this ZIP into a folder, if you downloaded the ZIP.
+2. Open chrome://extensions or edge://extensions in your browser.
+3. Enable Developer mode, then click Load unpacked.
+4. Select the folder containing manifest.json (the extension folder).
+5. Pin Discord Checker from the browser's extensions menu.
+6. Click the Discord logo, open Discord, and sign in on Discord's website.
+7. Refresh Discord once if that tab was open before installing the extension.
+8. Visit servers to discover their channels. Use Following in the popup to
+   choose a whole server or specific channels. Enable desktop notifications
+   in Settings if you want them.
+
+Leave a signed-in Discord WEB tab open. The desktop Discord app alone
+does not supply activity to this extension.
+
+The badge shows known activity, not a guaranteed exact message total:
+  3   = three known new messages
+  3+  = at least three; other unread messages may exist
+  dot = unread activity, but no count is available
+
+Whole-server selections can use the visible server icon's unread indicator.
+Specific-channel selections depend on Discord's rendered channel list.
+Hidden, muted, closed, or suspended pages can prevent activity detection.
+Visit channels to refresh their last known status.
+
+Passwords, account tokens, and message contents are never stored.
+Read a channel at the bottom to clear observed counts. Clear counts in
+the popup only dismisses the extension's counts; it does not mark Discord
+messages as read. Use one Discord account at a time.
