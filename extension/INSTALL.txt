@@ -11,6 +11,14 @@ DISCORD CHECKER - CHROME / EDGE
    choose a whole server or specific channels. Enable desktop notifications
    in Settings if you want them.
 
+Dark mode is on by default. Use the sun button to switch modes, or choose
+Dark, Light, or System in Settings > Appearance.
+Click the arrow beside a server to open its channels, and the pencil to
+edit its local display name. Leave the name blank to restore Discord's name.
+Use Open in new tab beside Settings for a larger dashboard.
+After updating, reload the extension on the browser's extensions page
+and refresh your Discord tab once.
+
 Leave a signed-in Discord WEB tab open. The desktop Discord app alone
 does not supply activity to this extension.
 

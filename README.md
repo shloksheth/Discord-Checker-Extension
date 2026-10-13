@@ -13,6 +13,15 @@ A Chrome / Edge extension that follows selected Discord servers and channels. Op
 
 No build, Discord application registration, bot, password entry into the extension, or account token is required. Leave at least one signed-in **Discord web tab** open. The native desktop Discord app alone is insufficient.
 
+## Appearance and organization
+
+- **Dark mode** is the default. Use the sun button in the header to switch between dark and light, or choose **Dark**, **Light**, or **System** under **Settings → Appearance**. Your preference is saved and shared with the full-tab view.
+- In **Following**, click the arrow next to a server to expand or collapse its channels. Servers start collapsed, and your choices are saved. Searching opens matching lists so you can find channels quickly.
+- Click the pencil beside a server to give it a custom display name. This only changes its name in the extension and its notifications. Leave the field blank to restore Discord's name; syncing Discord activity preserves your custom name.
+- The **Open in new tab** button beside Settings opens a larger dashboard with the same selections, names, and appearance. Channel links open Discord while keeping that dashboard available.
+
+After updating an unpacked installation, click **Reload** on its browser extensions page and refresh your Discord tab once.
+
 ## What the badge means
 
 - **A number:** known new messages observed in the rendered channel after a baseline scan, or its mention count, whichever is higher. The same message appearing in multiple scans/tabs is counted once.

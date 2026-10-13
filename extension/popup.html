@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -15,19 +15,46 @@
           ><span>Your channels. Less noise.</span>
         </div>
       </div>
-      <button
-        id="settings-button"
-        class="icon-button"
-        aria-label="Settings"
-        title="Settings"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="m9.5 4 .7-2h3.6l.7 2 2 .9 2.1-.4 1.8 3.1-1.4 1.6.2 2.2 1.4 1.6-1.8 3.1-2.1-.4-2 .9-.7 2h-3.6l-.7-2-2-.9-2.1.4-1.8-3.1 1.4-1.6-.2-2.2-1.4-1.6 1.8-3.1 2.1.4Z"
-          />
-          <circle cx="12" cy="10.5" r="3" />
-        </svg>
-      </button>
+      <div class="header-actions">
+        <button
+          id="theme-button"
+          class="icon-button"
+          aria-label="Use light mode"
+          title="Use light mode"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"
+            />
+          </svg>
+        </button>
+        <button
+          id="open-tab"
+          class="icon-button"
+          aria-label="Open in new tab"
+          title="Open in new tab"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14 3h7v7m0-7L10 14M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-6"
+            />
+          </svg>
+        </button>
+        <button
+          id="settings-button"
+          class="icon-button"
+          aria-label="Settings"
+          title="Settings"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="m9.5 4 .7-2h3.6l.7 2 2 .9 2.1-.4 1.8 3.1-1.4 1.6.2 2.2 1.4 1.6-1.8 3.1-2.1-.4-2 .9-.7 2h-3.6l-.7-2-2-.9-2.1.4-1.8-3.1 1.4-1.6-.2-2.2-1.4-1.6 1.8-3.1 2.1.4Z"
+            />
+            <circle cx="12" cy="10.5" r="3" />
+          </svg>
+        </button>
+      </div>
     </header>
     <div id="error" class="error" role="alert" hidden></div>
     <main>
@@ -121,6 +148,17 @@
         <button id="back" class="text-button">← Back</button>
         <h1 class="settings-title">Make it yours.</h1>
         <p class="helper">A few small controls for your checker.</p>
+        <label class="setting theme-setting"
+          ><div>
+            <strong>Appearance</strong>
+            <p>Choose dark, light, or your device’s theme.</p>
+          </div>
+          <select id="theme" aria-label="Appearance">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="system">System</option>
+          </select></label
+        >
         <label class="setting"
           ><div>
             <strong>Desktop notifications</strong>

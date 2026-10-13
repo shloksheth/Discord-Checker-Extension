@@ -7,9 +7,34 @@ export const emptyState = () => ({
   servers: {},
   channels: {},
   watch: { servers: [], channels: [], excluded: [] },
-  settings: { notifications: false, paused: false },
+  settings: { notifications: false, paused: false, theme: "dark" },
   lastSync: 0,
 });
+
+export const serverDisplayName = (server) =>
+  server?.nickname || server?.name || "Discord server";
+
+export function setServerPreferences(state, id, preferences) {
+  if (!isId(id) || !state.servers[id])
+    throw new Error("Visit this server in Discord first.");
+  const next = structuredClone(state);
+  // Keep the real Discord name for syncing; a nickname belongs only to this browser.
+  if (preferences?.nickname !== undefined) {
+    if (
+      typeof preferences.nickname !== "string" ||
+      preferences.nickname.trim().length > 100
+    ) {
+      throw new Error("Use a server name of 100 characters or fewer.");
+    }
+    next.servers[id].nickname = preferences.nickname.trim();
+  }
+  if (preferences?.expanded !== undefined) {
+    if (typeof preferences.expanded !== "boolean")
+      throw new Error("Invalid channel list preference.");
+    next.servers[id].expanded = preferences.expanded;
+  }
+  return next;
+}
 
 export function isWatched(state, channel) {
   return (

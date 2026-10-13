@@ -39,7 +39,7 @@ try {
       async () => (await chrome.storage.local.get("state")).state,
     );
   const getBadge = () => worker.evaluate(() => chrome.action.getBadgeText({}));
-  const popup = await context.newPage();
+  let popup = await context.newPage();
   await popup.setViewportSize({ width: 420, height: 600 });
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await expect(popup.locator("#welcome")).toBeVisible();
@@ -68,6 +68,27 @@ try {
   await expect(popup.locator("#dashboard")).toBeVisible();
   await popup.locator("#following-tab").click();
   await expect(popup.locator(".server-card")).toHaveCount(2);
+  await expect(popup.locator(`#server-channels-${serverId}`)).toBeHidden();
+  await popup
+    .getByRole("button", {
+      name: "Expand channels in Design Buddies",
+      exact: true,
+    })
+    .click();
+  await expect(popup.locator(`#server-channels-${serverId}`)).toBeVisible();
+  await popup
+    .getByRole("button", {
+      name: "Collapse channels in Design Buddies",
+      exact: true,
+    })
+    .click();
+  await expect(popup.locator(`#server-channels-${serverId}`)).toBeHidden();
+  await popup
+    .getByRole("button", {
+      name: "Expand channels in Design Buddies",
+      exact: true,
+    })
+    .click();
   const generalCheck = popup.getByRole("checkbox", {
     name: "Follow Design Buddies, #general",
     exact: true,
@@ -177,6 +198,15 @@ try {
   await expect(popup.locator(".channel-toggle")).toHaveCount(1);
 
   await popup.locator("#settings-button").click();
+  await expect(popup.locator("html")).toHaveAttribute("data-theme", "dark");
+  await popup.locator("#theme").selectOption("light");
+  await expect(popup.locator("html")).toHaveAttribute("data-theme", "light");
+  await popup.locator("#theme").selectOption("system");
+  await popup.emulateMedia({ colorScheme: "dark" });
+  await expect(popup.locator("html")).toHaveAttribute("data-theme", "dark");
+  await popup.emulateMedia({ colorScheme: "light" });
+  await expect(popup.locator("html")).toHaveAttribute("data-theme", "light");
+  await popup.locator("#theme").selectOption("dark");
   await popup.locator("#paused").check();
   await expect.poll(getBadge).toBe("Ⅱ");
   await popup.locator("#paused").uncheck();
@@ -270,6 +300,81 @@ try {
   await popup.locator("#clear").click();
   await expect.poll(getBadge).toBe("");
 
+  // Renames and expansion survive live page sync; a typing draft keeps focus.
+  await popup.locator("#following-tab").click();
+  await popup
+    .getByRole("button", { name: "Rename Design Buddies", exact: true })
+    .click();
+  await popup
+    .getByRole("textbox", { name: "Server display name" })
+    .fill("My design crew");
+  await popup.locator("#refresh").click();
+  await expect(
+    popup.getByRole("textbox", { name: "Server display name" }),
+  ).toHaveValue("My design crew");
+  await popup.getByRole("button", { name: "Save name" }).click();
+  await expect
+    .poll(async () => (await getState()).servers[serverId].nickname)
+    .toBe("My design crew");
+  await popup.locator("#refresh").click();
+  await expect(
+    popup.locator(`[data-server-id="${serverId}"] .server-name strong`),
+  ).toHaveText("My design crew");
+  await popup.reload();
+  await popup.locator("#following-tab").click();
+  await expect(popup.locator(`#server-channels-${serverId}`)).toBeVisible();
+  await expect(popup.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  const dashboardPromise = context.waitForEvent("page");
+  await popup
+    .getByRole("button", { name: "Open in new tab", exact: true })
+    .click();
+  const dashboard = await dashboardPromise;
+  await dashboard.waitForURL(
+    `chrome-extension://${extensionId}/popup.html?mode=tab&view=following`,
+  );
+  await dashboard.setViewportSize({ width: 1280, height: 900 });
+  await expect(dashboard.locator("body")).toHaveClass("full-page");
+  await expect(dashboard.locator("#following-panel")).toBeVisible();
+  await expect(dashboard.locator("#open-tab")).toBeHidden();
+  await expect(
+    dashboard.locator(`[data-server-id="${serverId}"] .server-name strong`),
+  ).toHaveText("My design crew");
+  await expect(dashboard.locator("html")).toHaveAttribute("data-theme", "dark");
+  await dashboard.screenshot({
+    path: path.join(screenshots, "dark-dashboard.png"),
+    fullPage: true,
+  });
+  await dashboard.getByRole("button", { name: "Use light mode" }).click();
+  await expect(dashboard.locator("html")).toHaveAttribute(
+    "data-theme",
+    "light",
+  );
+  await dashboard.getByRole("button", { name: "Use dark mode" }).click();
+  await dashboard.locator("#activity-tab").click();
+  await dashboard
+    .locator(".channel-row")
+    .filter({ hasText: "general" })
+    .click();
+  await expect(dashboard.locator("#dashboard")).toBeAttached();
+  await dashboard.bringToFront();
+  await dashboard.locator("#following-tab").click();
+  await dashboard
+    .getByRole("button", { name: "Rename My design crew", exact: true })
+    .click();
+  await dashboard
+    .getByRole("textbox", { name: "Server display name" })
+    .fill("");
+  await dashboard.getByRole("button", { name: "Save name" }).click();
+  await expect
+    .poll(async () => (await getState()).servers[serverId].nickname)
+    .toBe("");
+  await dashboard.close();
+  // The header action closed the popup tab; reopen it to finish the remaining checks.
+  popup = await context.newPage();
+  await popup.setViewportSize({ width: 420, height: 600 });
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+
   // Offline is saved activity, not a false live connection.
   for (const page of context
     .pages()
@@ -311,7 +416,7 @@ try {
     .toBe(0);
   assertNoPageErrors(errors);
   console.log(
-    "Browser checks passed: actual MV3 worker, discovery, selection, new messages, deduplication, mentions, server summaries, dismissal, notifications, pause, links, offline, safe names, and reset.",
+    "Browser checks passed: tracking, notifications, dark/light/system themes, collapsible servers, persistent nicknames, full-tab dashboard, links, offline, and reset.",
   );
   console.log(`Screenshots: ${screenshots}`);
 } catch (error) {

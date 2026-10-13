@@ -3,13 +3,40 @@ import {
   totals,
   channelActivity,
   serverOnlyActivity,
+  serverDisplayName,
 } from "./model.js";
 
 const $ = (id) => document.getElementById(id);
-let view = "activity";
+const pageParameters = new URLSearchParams(location.search);
+const fullPage = pageParameters.get("mode") === "tab";
+document.body.classList.toggle("full-page", fullPage);
+$("open-tab").hidden = fullPage;
+let view =
+  pageParameters.get("view") === "following" ? "following" : "activity";
 let showingSettings = false;
 let data;
 let refreshTimer;
+let editingServer = null;
+const searchExpansions = new Map();
+const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+function applyTheme() {
+  const preference = data?.state.settings.theme || "dark";
+  const theme =
+    preference === "system"
+      ? systemTheme.matches
+        ? "dark"
+        : "light"
+      : preference;
+  document.documentElement.dataset.theme = theme;
+  $("theme").value = preference;
+  $("theme-button").setAttribute(
+    "aria-label",
+    theme === "dark" ? "Use light mode" : "Use dark mode",
+  );
+  $("theme-button").title =
+    theme === "dark" ? "Use light mode" : "Use dark mode";
+}
 
 async function request(message) {
   const result = await chrome.runtime.sendMessage(message);
@@ -44,7 +71,7 @@ async function act(message) {
 async function openDiscord(serverId, channelId) {
   try {
     await request({ type: "OPEN_DISCORD", serverId, channelId });
-    window.close();
+    if (!fullPage) window.close();
   } catch (error) {
     showError(error);
   }
@@ -93,7 +120,7 @@ function renderActivity(state) {
     row.addEventListener("click", () => openDiscord(server.id));
     const copy = element("div", "channel-copy");
     copy.append(
-      element("strong", "", server.name),
+      element("strong", "", serverDisplayName(server)),
       element("span", "", "Server activity · channels not currently shown"),
     );
     row.append(
@@ -130,11 +157,7 @@ function renderActivity(state) {
     const copy = element("div", "channel-copy");
     copy.append(
       element("strong", "", channel.name),
-      element(
-        "span",
-        "",
-        state.servers[channel.serverId]?.name || "Discord server",
-      ),
+      element("span", "", serverDisplayName(state.servers[channel.serverId])),
     );
     const badge = activity.count
       ? `${activity.count}${activity.unknown ? "+" : ""}`
@@ -150,17 +173,28 @@ function renderActivity(state) {
   }
 }
 
-function renderFollowing(state) {
+function renderFollowing(state, focusEditor = false) {
   const container = $("server-list");
   const query = $("search").value.toLowerCase().trim();
+  const focusedInput = document.activeElement?.classList.contains(
+    "server-name-input",
+  )
+    ? document.activeElement
+    : null;
+  const selection = focusedInput
+    ? [focusedInput.selectionStart, focusedInput.selectionEnd]
+    : null;
   container.replaceChildren();
   const allChannels = Object.values(state.channels);
   const servers = Object.values(state.servers).sort((a, b) =>
-    a.name.localeCompare(b.name),
+    serverDisplayName(a).localeCompare(serverDisplayName(b)),
   );
   let shown = 0;
   for (const server of servers) {
-    const serverMatches = server.name.toLowerCase().includes(query);
+    const displayName = serverDisplayName(server);
+    const serverMatches = [displayName, server.name].some((name) =>
+      name.toLowerCase().includes(query),
+    );
     const channels = allChannels
       .filter(
         (channel) =>
@@ -171,19 +205,53 @@ function renderFollowing(state) {
     if (!serverMatches && !channels.length) continue;
     shown++;
     const card = element("article", "server-card");
+    card.dataset.serverId = server.id;
     const heading = element("div", "server-heading");
+    const expanded = query
+      ? (searchExpansions.get(server.id) ?? true)
+      : server.expanded === true;
+    const disclosure = element("button", "server-disclosure");
+    disclosure.setAttribute(
+      "aria-label",
+      `${expanded ? "Collapse" : "Expand"} channels in ${displayName}`,
+    );
+    disclosure.setAttribute("aria-expanded", String(expanded));
+    disclosure.setAttribute("aria-controls", `server-channels-${server.id}`);
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    arrow.setAttribute("viewBox", "0 0 24 24");
+    arrow.setAttribute("aria-hidden", "true");
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", "m9 5 7 7-7 7");
+    arrow.append(line);
+    disclosure.append(arrow);
+    disclosure.addEventListener("click", () => {
+      if (query) searchExpansions.set(server.id, !expanded);
+      act({
+        type: "SET_SERVER",
+        id: server.id,
+        preferences: { expanded: !expanded },
+      });
+    });
     const name = element("div", "server-name");
     const totalChannels = allChannels.filter(
       (channel) => channel.serverId === server.id,
     ).length;
     name.append(
-      element("strong", "", server.name),
+      element("strong", "", displayName),
       element(
         "small",
         "",
         `${totalChannels} discovered channel${totalChannels === 1 ? "" : "s"}`,
       ),
     );
+    name.title = server.nickname ? `Discord name: ${server.name}` : displayName;
+    const rename = element("button", "rename-server", "✎");
+    rename.setAttribute("aria-label", `Rename ${displayName}`);
+    rename.title = "Edit this server’s display name";
+    rename.addEventListener("click", () => {
+      editingServer = { id: server.id, value: server.nickname || server.name };
+      renderFollowing(data.state, true);
+    });
     const toggle = element("label", "server-toggle", "All");
     const checkbox = element("input");
     checkbox.type = "checkbox";
@@ -199,7 +267,7 @@ function renderFollowing(state) {
         ));
     checkbox.setAttribute(
       "aria-label",
-      `Follow all discovered channels in ${server.name}`,
+      `Follow all discovered channels in ${displayName}`,
     );
     checkbox.addEventListener("change", () =>
       act({
@@ -210,14 +278,22 @@ function renderFollowing(state) {
       }),
     );
     toggle.append(checkbox);
-    const initials = server.name
+    const initials = displayName
       .split(/\s+/)
       .slice(0, 2)
       .map((word) => word[0])
       .join("")
       .toUpperCase();
-    heading.append(element("span", "server-avatar", initials), name, toggle);
+    heading.append(
+      disclosure,
+      element("span", "server-avatar", initials),
+      name,
+      rename,
+      toggle,
+    );
     const list = element("div", "server-channels");
+    list.id = `server-channels-${server.id}`;
+    list.hidden = !expanded;
     for (const channel of channels) {
       const label = element("label", "channel-toggle");
       const checked = element("input");
@@ -225,7 +301,7 @@ function renderFollowing(state) {
       checked.checked = isWatched(state, channel);
       checked.setAttribute(
         "aria-label",
-        `Follow ${server.name}, #${channel.name}`,
+        `Follow ${displayName}, #${channel.name}`,
       );
       checked.addEventListener("change", () =>
         act({
@@ -251,7 +327,9 @@ function renderFollowing(state) {
     );
     visit.addEventListener("click", () => openDiscord(server.id));
     list.append(visit);
-    card.append(heading, list);
+    card.append(heading);
+    if (editingServer?.id === server.id) card.append(renameForm(server));
+    card.append(list);
     container.append(card);
   }
   if (!shown)
@@ -263,10 +341,74 @@ function renderFollowing(state) {
         ? "Try another server or channel name."
         : "Open a server in Discord, then return here. Its visible channels will appear automatically.",
     );
+  // A live activity update shouldn't interrupt someone halfway through typing a nickname.
+  if ((focusEditor || focusedInput) && editingServer) {
+    const input = container.querySelector(".server-name-input");
+    input?.focus({ preventScroll: true });
+    if (selection) input?.setSelectionRange(...selection);
+    else if (focusEditor) input?.select();
+  }
+}
+
+function renameForm(server) {
+  const form = element("form", "rename-form");
+  const input = element("input", "server-name-input");
+  input.type = "text";
+  input.maxLength = 100;
+  input.value = editingServer.value;
+  input.placeholder = server.name;
+  input.setAttribute("aria-label", "Server display name");
+  input.addEventListener("input", () => {
+    editingServer.value = input.value;
+  });
+  const actions = element("div", "rename-actions");
+  const cancel = element("button", "text-button", "Cancel");
+  cancel.type = "button";
+  const stopEditing = () => {
+    editingServer = null;
+    renderFollowing(data.state);
+  };
+  cancel.addEventListener("click", stopEditing);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      stopEditing();
+    }
+  });
+  const save = element("button", "small-primary", "Save name");
+  save.type = "submit";
+  actions.append(cancel, save);
+  form.append(
+    input,
+    element(
+      "p",
+      "helper",
+      "Only changes the name here. Leave blank to use Discord’s name.",
+    ),
+    actions,
+  );
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    try {
+      await request({
+        type: "SET_SERVER",
+        id: server.id,
+        preferences: { nickname: editingServer.value },
+      });
+      editingServer = null;
+      await load();
+    } catch (error) {
+      showError(error);
+      save.disabled = false;
+    }
+  });
+  return form;
 }
 
 function render() {
   if (!data) return;
+  applyTheme();
   const { state, connection } = data;
   const hasCatalog = Object.keys(state.servers).length > 0;
   const welcome = !connection.connected && !hasCatalog;
@@ -338,20 +480,48 @@ $("open-discord").addEventListener("click", () => openDiscord());
 $("activity-tab").addEventListener("click", () => {
   view = "activity";
   render();
+  document.querySelector("main").scrollTop = 0;
 });
 $("following-tab").addEventListener("click", () => {
   view = "following";
   render();
+  document.querySelector("main").scrollTop = 0;
 });
 $("settings-button").addEventListener("click", () => {
   showingSettings = !showingSettings;
   render();
+  document.querySelector("main").scrollTop = 0;
 });
 $("back").addEventListener("click", () => {
   showingSettings = false;
   render();
+  document.querySelector("main").scrollTop = 0;
 });
-$("search").addEventListener("input", () => renderFollowing(data.state));
+$("search").addEventListener("input", () => {
+  searchExpansions.clear();
+  renderFollowing(data.state);
+});
+$("theme").addEventListener("change", () =>
+  act({ type: "SET_SETTINGS", settings: { theme: $("theme").value } }),
+);
+$("theme-button").addEventListener("click", () =>
+  act({
+    type: "SET_SETTINGS",
+    settings: {
+      theme:
+        document.documentElement.dataset.theme === "dark" ? "light" : "dark",
+    },
+  }),
+);
+systemTheme.addEventListener("change", applyTheme);
+$("open-tab").addEventListener("click", async () => {
+  try {
+    await request({ type: "OPEN_CHECKER", view });
+    window.close();
+  } catch (error) {
+    showError(error);
+  }
+});
 $("clear").addEventListener("click", () => act({ type: "DISMISS_ALL" }));
 $("notifications").addEventListener("change", () =>
   act({
@@ -383,6 +553,7 @@ $("reset-cancel").addEventListener("click", () => {
 });
 $("reset-yes").addEventListener("click", async () => {
   await act({ type: "RESET" });
+  editingServer = null;
   $("reset-confirm").hidden = true;
   $("reset").hidden = false;
   showingSettings = false;

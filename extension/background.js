@@ -9,6 +9,8 @@ import {
   isWatched,
   isId,
   serverOnlyActivity,
+  serverDisplayName,
+  setServerPreferences,
 } from "./model.js";
 
 const discordTabs = () => chrome.tabs.query({ url: "https://discord.com/*" });
@@ -76,7 +78,7 @@ async function notifyChanges(before, after) {
     await chrome.notifications.create(notificationId, {
       type: "basic",
       iconUrl: "icons/128.png",
-      title: `${after.servers[channel.serverId]?.name || "Discord"} · #${channel.name}`,
+      title: `${serverDisplayName(after.servers[channel.serverId])} · #${channel.name}`,
       message: activity.count
         ? `At least ${activity.count} new message${activity.count === 1 ? "" : "s"}. Click to open Discord.`
         : "New unread activity. Click to open Discord.",
@@ -99,7 +101,7 @@ async function notifyChanges(before, after) {
     await chrome.notifications.create(key, {
       type: "basic",
       iconUrl: "icons/128.png",
-      title: server.name,
+      title: serverDisplayName(server),
       message: activity.count
         ? `At least ${activity.count} new messages across this server. Click to open Discord.`
         : "Unread server activity. Click to open Discord.",
@@ -204,6 +206,13 @@ async function handle(message, sender) {
     await openDiscord(message.serverId, message.channelId);
     return { ok: true };
   }
+  if (message.type === "OPEN_CHECKER") {
+    const view = message.view === "following" ? "following" : "activity";
+    await chrome.tabs.create({
+      url: chrome.runtime.getURL(`popup.html?mode=tab&view=${view}`),
+    });
+    return { ok: true };
+  }
   return serialize(async () => {
     const state = await stateFromDisk();
     let next;
@@ -222,6 +231,11 @@ async function handle(message, sender) {
           if (typeof message.settings?.[key] === "boolean")
             next.settings[key] = message.settings[key];
         }
+        if (["dark", "light", "system"].includes(message.settings?.theme))
+          next.settings.theme = message.settings.theme;
+        break;
+      case "SET_SERVER":
+        next = setServerPreferences(state, message.id, message.preferences);
         break;
       case "DISMISS_ALL":
         next = dismissAll(state);
